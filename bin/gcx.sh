@@ -334,6 +334,7 @@ Commands:
   vm              VM instance management
   run             Cloud Run service management
   setup           Run setup wizard
+  uninstall       Remove gcx config and restore defaults
   version         Show version
   help            Show this help
 
@@ -372,6 +373,67 @@ Examples:
   gcx adc login           Refresh ADC
   gcx setup               Run setup wizard
 EOF
+}
+
+do_uninstall() {
+    echo -e "${RED}⚠️  WARNING: This will PERMANENTLY DELETE gcx configuration!${NC}"
+    echo ""
+    echo "The following will be removed:"
+    echo "  • ~/.config/gcx/ (config files)"
+    echo "  • ~/.config/gcloud-creds/ (saved ADC credentials)"
+    echo "  • ADC symlink (will restore to normal gcloud ADC)"
+    echo ""
+    
+    # First confirmation
+    if command -v gum &>/dev/null; then
+        if ! gum confirm --negative="Cancel" "Are you sure you want to uninstall?"; then
+            echo "Cancelled."
+            return 1
+        fi
+    else
+        read -p "Are you sure? (y/n) " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Cancelled."; return 1; }
+    fi
+    
+    echo ""
+    echo -e "${RED}⚠️  FINAL CONFIRMATION${NC}"
+    echo -e "Type '${YELLOW}delete${NC}' to confirm:"
+    
+    local confirm_text
+    if command -v gum &>/dev/null; then
+        confirm_text=$(gum input --placeholder "Type 'delete' to confirm")
+    else
+        read -p "> " confirm_text
+    fi
+    
+    if [ "$confirm_text" != "delete" ]; then
+        echo "Cancelled. You must type 'delete' to confirm."
+        return 1
+    fi
+    
+    # Remove ADC symlink if it exists
+    if [ -L "$ADC_PATH" ]; then
+        rm -f "$ADC_PATH"
+        echo -e "${GREEN}✓${NC} Removed ADC symlink"
+        echo -e "${YELLOW}→${NC} Run 'gcloud auth application-default login' to restore ADC"
+    fi
+    
+    # Remove config directory
+    if [ -d "$CONFIG_DIR" ]; then
+        rm -rf "$CONFIG_DIR"
+        echo -e "${GREEN}✓${NC} Removed ~/.config/gcx/"
+    fi
+    
+    # Remove credentials directory
+    if [ -d "$CREDS_DIR" ]; then
+        rm -rf "$CREDS_DIR"
+        echo -e "${GREEN}✓${NC} Removed ~/.config/gcloud-creds/"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}gcx configuration removed.${NC}"
+    echo "To uninstall gcx itself, run: brew uninstall gcx"
 }
 
 switch_project() {
@@ -464,6 +526,9 @@ main() {
             fi
             shift
             run_main "$@"
+            ;;
+        uninstall)
+            do_uninstall
             ;;
         help|--help|-h)
             show_help

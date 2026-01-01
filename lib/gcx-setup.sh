@@ -6,6 +6,9 @@
 
 # set -e disabled - gcloud commands may return non-zero on warnings
 
+# Handle Ctrl+C properly
+trap 'echo ""; echo "Cancelled."; exit 130' INT
+
 CONFIG_DIR="$HOME/.config/gcx"
 CONFIG_FILE="$CONFIG_DIR/config.yaml"
 CREDS_DIR="$HOME/.config/gcloud-creds"
@@ -135,7 +138,7 @@ show_environment_status() {
     
     # Check ctx-switch config
     if [ -f "$CONFIG_FILE" ]; then
-        local orgs=$(yq '.organizations | keys | .[]' "$CONFIG_FILE" 2>/dev/null | tr '\n' ' ')
+        local orgs=$(yq '.organizations // {} | keys | .[]' "$CONFIG_FILE" 2>/dev/null | tr '\n' ' ')
         echo -e "${GREEN}✓${NC} ctx-switch orgs: $orgs"
     else
         echo -e "${YELLOW}⚠${NC} No ctx-switch config found"
@@ -495,12 +498,20 @@ init_from_current() {
     echo -e "${GREEN}✓${NC} Found gcloud configs: $(echo $gcloud_configs | tr '\n' ' ')"
     
     # Detect kubeconfigs
-    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename || echo "none")
-    echo -e "${GREEN}✓${NC} Found kubeconfigs: $(echo $kubeconfigs | tr '\n' ' ')"
+    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename || echo "")
+    if [ -n "$kubeconfigs" ]; then
+        echo -e "${GREEN}✓${NC} Found kubeconfigs: $(echo $kubeconfigs | tr '\n' ' ')"
+    else
+        echo -e "${YELLOW}⚠${NC} No kubeconfigs found"
+    fi
     
     # Detect credentials
-    local creds=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "none")
-    echo -e "${GREEN}✓${NC} Found credentials: $(echo $creds | tr '\n' ' ')"
+    local creds=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "")
+    if [ -n "$creds" ]; then
+        echo -e "${GREEN}✓${NC} Found credentials: $(echo $creds | tr '\n' ' ')"
+    else
+        echo -e "${YELLOW}⚠${NC} No ADC credentials found"
+    fi
     
     echo ""
     echo -e "${YELLOW}Now let's configure your organizations...${NC}"
@@ -514,18 +525,37 @@ init_from_current() {
 version: 1
 EOF
 
-    # Ask how many orgs to set up
-    local org_count=$(gum input --placeholder "How many organizations to set up?" --value "1")
+    # Set up one organization (simplified UX)
+    local org_count=1
     
     for ((i=1; i<=org_count; i++)); do
         echo ""
-        echo -e "${BLUE}--- Organization $i ---${NC}"
+        echo -e "${BLUE}--- Organization Setup ---${NC}"
         
-        local org_id=$(gum input --placeholder "Organization ID (lowercase, e.g., mycompany)")
-        local display_name=$(gum input --placeholder "Display name" --value "$org_id")
-        local color=$(echo -e "green\nmagenta\ncyan\nyellow\nblue\nred" | gum choose --header "Select color")
-        local gcloud_config=$(echo "$gcloud_configs" | gum choose --header "Select gcloud configuration")
-        local kubeconfig=$(echo "$kubeconfigs" | gum choose --header "Select kubeconfig" || echo "")
+        local org_id
+        org_id=$(gum input --header "Organization ID:" --placeholder "lowercase, e.g., mycompany")
+        if [ $? -ne 0 ] || [ -z "$org_id" ]; then echo "Cancelled."; return 1; fi
+        
+        local display_name
+        display_name=$(gum input --header "Display Name:" --placeholder "Human readable name" --value "$org_id")
+        if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+        [ -z "$display_name" ] && display_name="$org_id"
+        
+        local color
+        color=$(echo -e "green\nmagenta\ncyan\nyellow\nblue\nred" | gum choose --header "Select color:")
+        if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+        
+        local gcloud_config
+        gcloud_config=$(echo "$gcloud_configs" | gum choose --header "Select gcloud configuration:")
+        if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+        
+        # Handle kubeconfig selection - skip if none available
+        local kubeconfig=""
+        if [ -n "$kubeconfigs" ]; then
+            kubeconfig=$(echo -e "$kubeconfigs\n(none)" | gum choose --header "Select kubeconfig:")
+            if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+            [ "$kubeconfig" = "(none)" ] && kubeconfig=""
+        fi
         
         # Set as default if first org
         if [ $i -eq 1 ]; then
@@ -548,12 +578,58 @@ EOF
             echo ""
             echo -e "${BLUE}Identity $id_num for $display_name${NC}"
             
-            local id_key=$(gum input --placeholder "Identity key (e.g., user, sa, admin)" --value "$([ $id_num -eq 1 ] && echo 'user' || echo '')")
-            local id_name=$(gum input --placeholder "Display name (e.g., User, Service Account)")
-            local account=$(gum input --placeholder "Account email (e.g., you@company.com)")
+            local id_key
+            id_key=$(gum input --header "Identity Key:" --placeholder "e.g., user, sa, admin" --value "$([ $id_num -eq 1 ] && echo 'user' || echo '')")
+            if [ $? -ne 0 ] || [ -z "$id_key" ]; then echo "Cancelled."; return 1; fi
+            
+            local id_name
+            id_name=$(gum input --header "Identity Display Name:" --placeholder "e.g., User, Service Account" --value "User")
+            if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+            [ -z "$id_name" ] && id_name="$id_key"
+            
+            # Get account email from selected gcloud config as default
+            local default_account=""
+            if [ -n "$gcloud_config" ]; then
+                default_account=$(gcloud config configurations describe "$gcloud_config" --format="value(properties.core.account)" 2>/dev/null)
+            fi
+            
+            local account
+            account=$(gum input --header "Account Email:" --placeholder "e.g., you@company.com" --value "$default_account")
+            if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+            
             local adc=""
-            if [ "$creds" != "none" ] && [ -n "$creds" ]; then
-                adc=$(echo "$creds" | gum choose --header "Select ADC credential file (or Ctrl+C to skip)" || echo "")
+            if [ -n "$creds" ]; then
+                # Credentials exist, let user choose
+                adc=$(echo -e "$creds\n(none)" | gum choose --header "Select ADC credential file:")
+                if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+                [ "$adc" = "(none)" ] && adc=""
+            else
+                # No credentials found, offer to set up
+                echo -e "${YELLOW}No ADC credentials found.${NC}"
+                local adc_action
+                adc_action=$(echo -e "🔐 Login now (gcloud auth application-default login)\n⏭️  Skip for now" | gum choose --header "Set up Application Default Credentials?")
+                if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+                
+                if [[ "$adc_action" == *"Login now"* ]]; then
+                    echo -e "${BLUE}Opening browser for ADC login...${NC}"
+                    gcloud auth application-default login
+                    
+                    if [ -f "$HOME/.config/gcloud/application_default_credentials.json" ]; then
+                        # Ask for a name to save it
+                        local adc_name
+                        adc_name=$(gum input --header "Save ADC as:" --placeholder "e.g., adc-${org_id}.json" --value "adc-${org_id}.json")
+                        if [ $? -ne 0 ]; then echo "Cancelled."; return 1; fi
+                        
+                        if [ -n "$adc_name" ]; then
+                            mkdir -p "$CREDS_DIR"
+                            cp "$HOME/.config/gcloud/application_default_credentials.json" "$CREDS_DIR/$adc_name"
+                            adc="$adc_name"
+                            echo -e "${GREEN}✓${NC} ADC saved to: $CREDS_DIR/$adc_name"
+                            # Update creds list
+                            creds=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "")
+                        fi
+                    fi
+                fi
             fi
             
             yq -i ".organizations.[\"$org_id\"].identities.[\"$id_key\"] = {
@@ -572,8 +648,20 @@ EOF
     
     echo ""
     echo -e "${GREEN}✓${NC} Config file created: $CONFIG_FILE"
+    
+    # Auto-activate: Create ADC symlink if adc was configured
+    local default_org=$(yq '.default_org' "$CONFIG_FILE" 2>/dev/null)
+    if [ -n "$default_org" ]; then
+        local default_adc=$(yq ".organizations.[\"$default_org\"].identities.user.adc // \"\"" "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$default_adc" ] && [ -f "$CREDS_DIR/$default_adc" ]; then
+            rm -f "$ADC_PATH"
+            ln -s "$CREDS_DIR/$default_adc" "$ADC_PATH"
+            echo -e "${GREEN}✓${NC} ADC linked: $default_adc"
+        fi
+    fi
+    
     echo ""
-    echo "You can edit this file anytime with: ctx-switch-setup edit"
+    echo "You can edit this file anytime with: gcx setup edit"
 }
 
 init_interactive() {
@@ -691,7 +779,11 @@ add_identity() {
     
     if [ -z "$org" ]; then
         # Select organization
-        local orgs=$(yq '.organizations | keys | .[]' "$CONFIG_FILE")
+        local orgs=$(yq '.organizations // {} | keys | .[]' "$CONFIG_FILE" 2>/dev/null)
+        if [ -z "$orgs" ]; then
+            echo -e "${RED}No organizations found. Run 'gcx setup' first to add an organization.${NC}"
+            return 1
+        fi
         org=$(echo "$orgs" | gum choose --header "Select organization")
     fi
     

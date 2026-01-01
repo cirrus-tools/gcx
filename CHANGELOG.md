@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- **Setup Wizard**: Significant UX improvements for `gcx setup`
+  - Added interaction cancellation support
+  - Auto-detection of gcloud account email
+  - Integrated ADC login flow for new setups
+  - Better handling of missing credentials and kubeconfigs
+- **Auto-Activation**: Automatically links ADC credentials after setup
+
+### Fixed
+- Fix `add_identity` error when no organizations exist
+
 ## [1.2.3] - 2026-01-01
 
 ### Fixed
