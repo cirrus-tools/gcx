@@ -406,8 +406,8 @@ main() {
             SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             if [ -f "$SCRIPT_DIR/../lib/gcx-setup.sh" ]; then
                 source "$SCRIPT_DIR/../lib/gcx-setup.sh"
-            elif [ -f "$SCRIPT_DIR/gcx-setup.sh" ]; then
-                source "$SCRIPT_DIR/gcx-setup.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-setup.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-setup.sh"
             elif [ -f "/usr/local/lib/gcx/gcx-setup.sh" ]; then
                 source "/usr/local/lib/gcx/gcx-setup.sh"
             else
@@ -422,8 +422,8 @@ main() {
             SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             if [ -f "$SCRIPT_DIR/../lib/gcx-adc.sh" ]; then
                 source "$SCRIPT_DIR/../lib/gcx-adc.sh"
-            elif [ -f "$SCRIPT_DIR/gcx-adc.sh" ]; then
-                source "$SCRIPT_DIR/gcx-adc.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-adc.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-adc.sh"
             elif [ -f "/usr/local/lib/gcx/gcx-adc.sh" ]; then
                 source "/usr/local/lib/gcx/gcx-adc.sh"
             else
@@ -438,8 +438,8 @@ main() {
             SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             if [ -f "$SCRIPT_DIR/../lib/gcx-vm.sh" ]; then
                 source "$SCRIPT_DIR/../lib/gcx-vm.sh"
-            elif [ -f "$SCRIPT_DIR/gcx-vm.sh" ]; then
-                source "$SCRIPT_DIR/gcx-vm.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-vm.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-vm.sh"
             elif [ -f "/usr/local/lib/gcx/gcx-vm.sh" ]; then
                 source "/usr/local/lib/gcx/gcx-vm.sh"
             else
@@ -454,8 +454,8 @@ main() {
             SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
             if [ -f "$SCRIPT_DIR/../lib/gcx-run.sh" ]; then
                 source "$SCRIPT_DIR/../lib/gcx-run.sh"
-            elif [ -f "$SCRIPT_DIR/gcx-run.sh" ]; then
-                source "$SCRIPT_DIR/gcx-run.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-run.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-run.sh"
             elif [ -f "/usr/local/lib/gcx/gcx-run.sh" ]; then
                 source "/usr/local/lib/gcx/gcx-run.sh"
             else
