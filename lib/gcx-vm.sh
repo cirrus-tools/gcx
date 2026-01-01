@@ -18,17 +18,31 @@ NC='\033[0m'
 
 vm_list() {
     local project=$(gcloud config get-value project 2>/dev/null)
-    echo -e "${BLUE}Loading VMs for project: ${project}${NC}"
-    echo ""
+    local tmpfile=$(mktemp)
 
-    local vms=$(gcloud compute instances list --format="table(name,zone,machineType.basename(),status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)" 2>/dev/null)
+    gum spin --spinner dot --title "Loading VMs..." -- \
+        sh -c "gcloud compute instances list --quiet --format='table(name,zone,machineType.basename(),status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)' > '$tmpfile' 2>&1"
+    local exit_code=$?
 
-    if [ -z "$vms" ]; then
+    local result=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -ne 0 ] || echo "$result" | grep -q "ERROR\|PERMISSION_DENIED"; then
+        if echo "$result" | grep -q "API.*not enabled\|PERMISSION_DENIED"; then
+            echo -e "${RED}Error: Compute API not enabled or no permission${NC}"
+            echo -e "${YELLOW}Enable it at: https://console.cloud.google.com/apis/library/compute.googleapis.com${NC}"
+        else
+            echo -e "${RED}Error: $result${NC}"
+        fi
+        return 1
+    fi
+
+    if [ -z "$result" ] || echo "$result" | grep -q "Listed 0 items"; then
         echo -e "${YELLOW}No VMs found in project ${project}${NC}"
         return 0
     fi
 
-    echo "$vms"
+    echo "$result"
     echo ""
 }
 
@@ -38,9 +52,24 @@ vm_list() {
 
 vm_select() {
     local project=$(gcloud config get-value project 2>/dev/null)
-    echo -e "${BLUE}Loading VMs...${NC}"
+    local tmpfile=$(mktemp)
 
-    local vms=$(gcloud compute instances list --format="value(name,zone,status)" 2>/dev/null)
+    gum spin --spinner dot --title "Loading VMs..." -- \
+        sh -c "gcloud compute instances list --quiet --format='value(name,zone,status)' > '$tmpfile' 2>&1"
+    local exit_code=$?
+
+    local vms=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -ne 0 ] || echo "$vms" | grep -q "ERROR\|PERMISSION_DENIED"; then
+        if echo "$vms" | grep -q "API.*not enabled\|PERMISSION_DENIED"; then
+            echo -e "${RED}Error: Compute API not enabled or no permission${NC}"
+            echo -e "${YELLOW}Enable it at: https://console.cloud.google.com/apis/library/compute.googleapis.com${NC}"
+        else
+            echo -e "${RED}Error loading VMs${NC}"
+        fi
+        return 1
+    fi
 
     if [ -z "$vms" ]; then
         echo -e "${YELLOW}No VMs found in project ${project}${NC}"

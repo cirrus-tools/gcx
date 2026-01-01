@@ -20,15 +20,38 @@ run_list() {
     local project=$(gcloud config get-value project 2>/dev/null)
     local region="${1:-}"
 
-    echo -e "${BLUE}Loading Cloud Run services...${NC}"
-    echo ""
+    local tmpfile=$(mktemp)
+    local exit_code
 
     if [ -n "$region" ]; then
-        gcloud run services list --region="$region" --format="table(metadata.name,region,status.url,status.conditions[0].status)" 2>/dev/null
+        gum spin --spinner dot --title "Loading Cloud Run services..." -- \
+            sh -c "gcloud run services list --quiet --region='$region' --format='table(metadata.name,region,status.url,status.conditions[0].status)' > '$tmpfile' 2>&1"
+        exit_code=$?
     else
-        gcloud run services list --format="table(metadata.name,region,status.url,status.conditions[0].status)" 2>/dev/null
+        gum spin --spinner dot --title "Loading Cloud Run services..." -- \
+            sh -c "gcloud run services list --quiet --format='table(metadata.name,region,status.url,status.conditions[0].status)' > '$tmpfile' 2>&1"
+        exit_code=$?
     fi
 
+    local result=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -ne 0 ] || echo "$result" | grep -q "ERROR\|PERMISSION_DENIED"; then
+        if echo "$result" | grep -q "API.*not enabled\|PERMISSION_DENIED"; then
+            echo -e "${RED}Error: Cloud Run API not enabled or no permission${NC}"
+            echo -e "${YELLOW}Enable it at: https://console.cloud.google.com/apis/library/run.googleapis.com${NC}"
+        else
+            echo -e "${RED}Error: $result${NC}"
+        fi
+        return 1
+    fi
+
+    if [ -z "$result" ]; then
+        echo -e "${YELLOW}No Cloud Run services found in project ${project}${NC}"
+        return 0
+    fi
+
+    echo "$result"
     echo ""
 }
 
@@ -38,9 +61,24 @@ run_list() {
 
 run_select() {
     local project=$(gcloud config get-value project 2>/dev/null)
-    echo -e "${BLUE}Loading Cloud Run services...${NC}"
+    local tmpfile=$(mktemp)
 
-    local services=$(gcloud run services list --format="value(metadata.name,region)" 2>/dev/null)
+    gum spin --spinner dot --title "Loading Cloud Run services..." -- \
+        sh -c "gcloud run services list --quiet --format='value(metadata.name,region)' > '$tmpfile' 2>&1"
+    local exit_code=$?
+
+    local services=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -ne 0 ] || echo "$services" | grep -q "ERROR\|PERMISSION_DENIED"; then
+        if echo "$services" | grep -q "API.*not enabled\|PERMISSION_DENIED"; then
+            echo -e "${RED}Error: Cloud Run API not enabled or no permission${NC}"
+            echo -e "${YELLOW}Enable it at: https://console.cloud.google.com/apis/library/run.googleapis.com${NC}"
+        else
+            echo -e "${RED}Error loading services${NC}"
+        fi
+        return 1
+    fi
 
     if [ -z "$services" ]; then
         echo -e "${YELLOW}No Cloud Run services found in project ${project}${NC}"
