@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-01-01
+
 ### Fixed
 - Fix lib path for homebrew installation (lib/gcx/ subdirectory)
 
@@ -36,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-organization, multi-identity support
 - Config export/import for team sharing
 
-[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/cirrus-tools/gcx/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/cirrus-tools/gcx/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cirrus-tools/gcx/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/cirrus-tools/gcx/releases/tag/v1.0.0

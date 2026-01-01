@@ -7,7 +7,7 @@
 #
 # Reads configuration from ~/.config/gcx/config.yaml
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # set -e disabled - gcloud commands may return non-zero on warnings
 
