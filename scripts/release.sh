@@ -54,10 +54,6 @@ fi
 echo -e "${BLUE}Updating bin/gcx.sh...${NC}"
 sed -i '' "s/^VERSION=\".*\"/VERSION=\"${NEW_VERSION}\"/" bin/gcx.sh
 
-# Update version in Formula
-echo -e "${BLUE}Updating Formula/gcx.rb...${NC}"
-sed -i '' "s|/tags/v[0-9]*\.[0-9]*\.[0-9]*\.tar\.gz|/tags/v${NEW_VERSION}.tar.gz|" Formula/gcx.rb
-
 # Update CHANGELOG
 if [ -f "CHANGELOG.md" ]; then
     echo -e "${BLUE}Updating CHANGELOG.md...${NC}"
@@ -79,7 +75,7 @@ fi
 
 # Commit
 echo -e "${BLUE}Committing changes...${NC}"
-git add bin/gcx.sh Formula/gcx.rb CHANGELOG.md
+git add bin/gcx.sh CHANGELOG.md
 git commit -m "chore: release v${NEW_VERSION}"
 
 # Tag
