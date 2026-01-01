@@ -64,7 +64,7 @@ run_select() {
     local tmpfile=$(mktemp)
 
     gum spin --spinner dot --title "Loading Cloud Run services..." -- \
-        sh -c "gcloud run services list --quiet --format='value(metadata.name,region)' > '$tmpfile' 2>&1"
+        sh -c "gcloud run services list --quiet --format='value(metadata.name,region,status.url)' > '$tmpfile' 2>&1"
     local exit_code=$?
 
     local services=$(cat "$tmpfile")
@@ -85,13 +85,15 @@ run_select() {
         return 1
     fi
 
-    # Build selection list
+    # Build selection list with URL
     local options=""
-    while IFS=$'\t' read -r name region; do
-        options="${options}🚀 ${name} (${region})\n"
+    while IFS=$'\t' read -r name region url; do
+        # Shorten URL for display
+        local short_url=$(echo "$url" | sed 's|https://||' | cut -c1-40)
+        options="${options}🚀 ${name} | ${region} | ${short_url}...\n"
     done <<< "$services"
 
-    local choice=$(echo -e "$options" | gum choose --header="Select service:" --header.foreground="4")
+    local choice=$(echo -e "$options" | gum filter --placeholder="Search service..." --header="Select service (type to filter):" --header.foreground="4")
 
     if [ -z "$choice" ]; then
         echo "Cancelled."
@@ -99,8 +101,8 @@ run_select() {
     fi
 
     # Extract service name and region
-    local selected_name=$(echo "$choice" | sed 's/^[^ ]* //' | cut -d' ' -f1)
-    local selected_region=$(echo "$choice" | grep -o '([^)]*' | sed 's/(//')
+    local selected_name=$(echo "$choice" | sed 's/^[^ ]* //' | cut -d'|' -f1 | xargs)
+    local selected_region=$(echo "$choice" | cut -d'|' -f2 | xargs)
 
     echo ""
     echo -e "${GREEN}Selected: ${selected_name} (${selected_region})${NC}"
@@ -164,10 +166,30 @@ run_open() {
 run_describe() {
     local name="$1"
     local region="$2"
+    local tmpfile=$(mktemp)
 
-    echo -e "${BLUE}=== Service Details: ${name} ===${NC}"
+    gum spin --spinner dot --title "Loading details..." -- \
+        sh -c "gcloud run services describe '$name' --region='$region' --quiet --format='value(metadata.name,status.url,spec.template.spec.containers[0].image,spec.template.spec.containers[0].resources.limits.cpu,spec.template.spec.containers[0].resources.limits.memory,metadata.creationTimestamp)' > '$tmpfile' 2>&1"
+
+    local info=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    IFS=$'\t' read -r svc_name url image cpu memory created <<< "$info"
+
+    # Shorten image name
+    local short_image=$(echo "$image" | sed 's|.*/||' | cut -c1-50)
+
     echo ""
-    gcloud run services describe "$name" --region="$region" --format="yaml(metadata.name,status.url,spec.template.spec.containers[0].image,spec.template.spec.containers[0].resources,spec.traffic)"
+    gum style --border rounded --padding "1 2" --border-foreground 4 \
+        "🚀 ${svc_name}" \
+        "" \
+        "Region:  ${region}" \
+        "URL:     ${url}" \
+        "Image:   ${short_image}" \
+        "CPU:     ${cpu:-default}" \
+        "Memory:  ${memory:-default}" \
+        "Created: ${created%T*}"
+    echo ""
 }
 
 run_logs() {

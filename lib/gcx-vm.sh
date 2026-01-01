@@ -55,7 +55,7 @@ vm_select() {
     local tmpfile=$(mktemp)
 
     gum spin --spinner dot --title "Loading VMs..." -- \
-        sh -c "gcloud compute instances list --quiet --format='value(name,zone,status)' > '$tmpfile' 2>&1"
+        sh -c "gcloud compute instances list --quiet --format='value(name,zone,status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP,machineType.basename())' > '$tmpfile' 2>&1"
     local exit_code=$?
 
     local vms=$(cat "$tmpfile")
@@ -76,27 +76,33 @@ vm_select() {
         return 1
     fi
 
-    # Build selection list
+    # Build selection list with more info
     local options=""
-    while IFS=$'\t' read -r name zone status; do
+    while IFS=$'\t' read -r name zone status internal_ip external_ip machine_type; do
         local icon="⚪"
         [ "$status" = "RUNNING" ] && icon="🟢"
         [ "$status" = "TERMINATED" ] && icon="🔴"
         [ "$status" = "STOPPED" ] && icon="🔴"
         [ "$status" = "SUSPENDED" ] && icon="🟡"
-        options="${options}${icon} ${name} (${zone##*/}) [${status}]\n"
+
+        local zone_short="${zone##*/}"
+        local ip_info=""
+        [ -n "$external_ip" ] && ip_info="$external_ip" || ip_info="$internal_ip"
+
+        # Format: icon name | zone | IP | type
+        options="${options}${icon} ${name} | ${zone_short} | ${ip_info:-no-ip} | ${machine_type}\n"
     done <<< "$vms"
 
-    local choice=$(echo -e "$options" | gum choose --header="Select VM:" --header.foreground="4")
+    local choice=$(echo -e "$options" | gum filter --placeholder="Search VM..." --header="Select VM (type to filter):" --header.foreground="4")
 
     if [ -z "$choice" ]; then
         echo "Cancelled."
         return 0
     fi
 
-    # Extract VM name and zone
-    local selected_name=$(echo "$choice" | sed 's/^[^ ]* //' | cut -d' ' -f1)
-    local selected_zone=$(echo "$choice" | grep -o '([^)]*' | sed 's/(//')
+    # Extract VM name and zone from choice
+    local selected_name=$(echo "$choice" | sed 's/^[^ ]* //' | cut -d'|' -f1 | xargs)
+    local selected_zone=$(echo "$choice" | cut -d'|' -f2 | xargs)
 
     echo ""
     echo -e "${GREEN}Selected: ${selected_name} (${selected_zone})${NC}"
@@ -158,10 +164,33 @@ vm_ssh() {
 vm_describe() {
     local name="$1"
     local zone="$2"
+    local tmpfile=$(mktemp)
 
-    echo -e "${BLUE}=== VM Details: ${name} ===${NC}"
+    gum spin --spinner dot --title "Loading details..." -- \
+        sh -c "gcloud compute instances describe '$name' --zone='$zone' --quiet --format='value(name,zone.basename(),machineType.basename(),status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP,disks[0].source.basename(),creationTimestamp)' > '$tmpfile' 2>&1"
+
+    local info=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    IFS=$'\t' read -r vm_name vm_zone machine_type status internal_ip external_ip disk created <<< "$info"
+
+    local status_icon="⚪"
+    [ "$status" = "RUNNING" ] && status_icon="🟢"
+    [ "$status" = "STOPPED" ] && status_icon="🔴"
+    [ "$status" = "TERMINATED" ] && status_icon="🔴"
+
     echo ""
-    gcloud compute instances describe "$name" --zone="$zone" --format="yaml(name,zone,machineType,status,networkInterfaces,disks[].source,metadata.items)"
+    gum style --border rounded --padding "1 2" --border-foreground 4 \
+        "${status_icon} ${vm_name}" \
+        "" \
+        "Zone:        ${vm_zone}" \
+        "Type:        ${machine_type}" \
+        "Status:      ${status}" \
+        "Internal IP: ${internal_ip:-none}" \
+        "External IP: ${external_ip:-none}" \
+        "Disk:        ${disk}" \
+        "Created:     ${created%T*}"
+    echo ""
 }
 
 vm_start() {

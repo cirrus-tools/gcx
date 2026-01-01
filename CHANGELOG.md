@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - Use gum spinner for loading states (vm, run)
+- Enhanced VM list with search filter and status icons
+- Improved VM details view with formatted output
 - Better error messages when API not enabled or permission denied
 
 ## [1.2.1] - 2026-01-01
