@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-01-01
+
 ### Improved
 - Use gum spinner for loading states (vm, run)
 - Enhanced VM list with search filter and status icons
@@ -44,7 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-organization, multi-identity support
 - Config export/import for team sharing
 
-[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/cirrus-tools/gcx/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/cirrus-tools/gcx/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/cirrus-tools/gcx/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cirrus-tools/gcx/compare/v1.0.0...v1.1.0
