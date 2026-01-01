@@ -484,6 +484,9 @@ init_config() {
 }
 
 init_from_current() {
+    # Ensure config directory exists
+    mkdir -p "$CONFIG_DIR"
+    
     echo -e "${BLUE}Detecting current configuration...${NC}"
     echo ""
     
