@@ -107,12 +107,14 @@ gcx setup edit  # Fill in their accounts
 
 ## Roadmap
 
-- [ ] VM instance selector (`gcx vm`)
+- [x] VM instance selector (`gcx vm`)
+- [x] Cloud Run service selector (`gcx run`)
+- [x] Application Default Credentials (ADC) management (`gcx adc`)
 - [ ] Cloud SQL selector (`gcx sql`)
 - [ ] Network/VPC selector (`gcx network`)
 - [ ] GKE cluster selector (`gcx gke`)
 - [ ] SSH config generation
-- [ ] Shell completion (bash/zsh/fish)
+- [x] Shell completion (bash/zsh)
 
 ## License
 
