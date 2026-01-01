@@ -58,10 +58,29 @@ sed -i '' "s/^VERSION=\".*\"/VERSION=\"${NEW_VERSION}\"/" bin/gcx.sh
 echo -e "${BLUE}Updating Formula/gcx.rb...${NC}"
 sed -i '' "s|/tags/v[0-9]*\.[0-9]*\.[0-9]*\.tar\.gz|/tags/v${NEW_VERSION}.tar.gz|" Formula/gcx.rb
 
+# Update CHANGELOG
+if [ -f "CHANGELOG.md" ]; then
+    echo -e "${BLUE}Updating CHANGELOG.md...${NC}"
+    TODAY=$(date +%Y-%m-%d)
+
+    # Replace [Unreleased] with new version section
+    sed -i '' "s/^## \[Unreleased\]$/## [Unreleased]\n\n## [${NEW_VERSION}] - ${TODAY}/" CHANGELOG.md
+
+    # Update links at bottom
+    sed -i '' "s|\[Unreleased\]: \(.*\)/compare/v.*\.\.\.HEAD|[Unreleased]: \1/compare/v${NEW_VERSION}...HEAD|" CHANGELOG.md
+
+    # Add new version link (before the first version link)
+    if ! grep -q "\[${NEW_VERSION}\]:" CHANGELOG.md; then
+        sed -i '' "/^\[Unreleased\]:.*$/a\\
+[${NEW_VERSION}]: https://github.com/cirrus-tools/gcx/compare/v${CURRENT_VERSION}...v${NEW_VERSION}
+" CHANGELOG.md
+    fi
+fi
+
 # Commit
 echo -e "${BLUE}Committing changes...${NC}"
-git add bin/gcx.sh Formula/gcx.rb
-git commit -m "chore: bump version to ${NEW_VERSION}"
+git add bin/gcx.sh Formula/gcx.rb CHANGELOG.md
+git commit -m "chore: release v${NEW_VERSION}"
 
 # Tag
 echo -e "${BLUE}Creating tag v${NEW_VERSION}...${NC}"
