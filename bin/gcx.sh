@@ -7,6 +7,8 @@
 #
 # Reads configuration from ~/.config/gcx/config.yaml
 
+VERSION="1.0.0"
+
 # set -e disabled - gcloud commands may return non-zero on warnings
 
 # Paths
@@ -393,6 +395,9 @@ main() {
             ;;
         help|--help|-h)
             show_help
+            ;;
+        version|--version|-v)
+            echo "gcx $VERSION"
             ;;
         "")
             # Interactive mode
