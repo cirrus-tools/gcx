@@ -15,6 +15,7 @@ class Gcx < Formula
   def install
     bin.install "bin/gcx.sh" => "gcx"
     (lib/"gcx").install "lib/gcx-setup.sh"
+    (lib/"gcx").install "lib/gcx-adc.sh"
   end
 
   def caveats

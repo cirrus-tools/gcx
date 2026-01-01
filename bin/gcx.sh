@@ -330,8 +330,16 @@ Commands:
   <org> <id>      Switch to org with specific identity
   status, s       Show current context
   project, p      Quick switch project
+  adc             ADC (Application Default Credentials) management
   setup           Run setup wizard
+  version         Show version
   help            Show this help
+
+ADC Commands:
+  adc             Show ADC status
+  adc login       Fresh login (refresh ADC)
+  adc switch      Switch between saved credentials
+  adc save        Save current ADC
 
 Setup Commands:
   setup init      Initialize configuration
@@ -346,6 +354,8 @@ Examples:
   gcx myorg               Switch to myorg
   gcx myorg sa            Switch to myorg with SA identity
   gcx project             Quick switch project
+  gcx adc                 Check ADC status
+  gcx adc login           Refresh ADC
   gcx setup               Run setup wizard
 EOF
 }
@@ -392,6 +402,22 @@ main() {
             fi
             shift
             main "$@"
+            ;;
+        adc)
+            # Find lib directory
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-adc.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-adc.sh"
+            elif [ -f "$SCRIPT_DIR/gcx-adc.sh" ]; then
+                source "$SCRIPT_DIR/gcx-adc.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-adc.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-adc.sh"
+            else
+                echo "Error: gcx-adc.sh not found"
+                exit 1
+            fi
+            shift
+            adc_main "$@"
             ;;
         help|--help|-h)
             show_help
