@@ -331,6 +331,8 @@ Commands:
   status, s       Show current context
   project, p      Quick switch project
   adc             ADC (Application Default Credentials) management
+  vm              VM instance management
+  run             Cloud Run service management
   setup           Run setup wizard
   version         Show version
   help            Show this help
@@ -340,6 +342,18 @@ ADC Commands:
   adc login       Fresh login (refresh ADC)
   adc switch      Switch between saved credentials
   adc save        Save current ADC
+
+VM Commands:
+  vm              Interactive VM selector
+  vm list         List all VMs
+  vm ssh <name>   SSH to VM
+  vm start/stop   Start or stop VM
+
+Cloud Run Commands:
+  run             Interactive service selector
+  run list        List all services
+  run logs <name> View service logs
+  run open <name> Open service URL
 
 Setup Commands:
   setup init      Initialize configuration
@@ -418,6 +432,38 @@ main() {
             fi
             shift
             adc_main "$@"
+            ;;
+        vm)
+            # Find lib directory
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-vm.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-vm.sh"
+            elif [ -f "$SCRIPT_DIR/gcx-vm.sh" ]; then
+                source "$SCRIPT_DIR/gcx-vm.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-vm.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-vm.sh"
+            else
+                echo "Error: gcx-vm.sh not found"
+                exit 1
+            fi
+            shift
+            vm_main "$@"
+            ;;
+        run)
+            # Find lib directory
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-run.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-run.sh"
+            elif [ -f "$SCRIPT_DIR/gcx-run.sh" ]; then
+                source "$SCRIPT_DIR/gcx-run.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-run.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-run.sh"
+            else
+                echo "Error: gcx-run.sh not found"
+                exit 1
+            fi
+            shift
+            run_main "$@"
             ;;
         help|--help|-h)
             show_help

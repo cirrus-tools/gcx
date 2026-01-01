@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `gcx vm` - VM instance management (list, SSH, start/stop)
+- `gcx run` - Cloud Run service management (list, logs, open URL)
+
 ## [1.1.0] - 2026-01-01
 
 ### Added

@@ -30,6 +30,31 @@ _gcx_adc() {
     _describe -t commands 'adc command' adc_commands
 }
 
+_gcx_vm() {
+    local -a vm_commands
+    vm_commands=(
+        'list:List all VMs'
+        'ls:List all VMs'
+        'ssh:SSH to VM'
+        'start:Start VM'
+        'stop:Stop VM'
+        'help:Show help'
+    )
+    _describe -t commands 'vm command' vm_commands
+}
+
+_gcx_run() {
+    local -a run_commands
+    run_commands=(
+        'list:List all services'
+        'ls:List all services'
+        'logs:View service logs'
+        'open:Open service URL'
+        'help:Show help'
+    )
+    _describe -t commands 'run command' run_commands
+}
+
 _gcx_setup() {
     local -a setup_commands
     setup_commands=(
@@ -65,6 +90,8 @@ _gcx() {
                 'project:Quick switch project'
                 'p:Quick switch project'
                 'adc:ADC management'
+                'vm:VM instance management'
+                'run:Cloud Run management'
                 'setup:Run setup wizard'
                 'version:Show version'
                 'help:Show help'
@@ -83,6 +110,12 @@ _gcx() {
             case $line[1] in
                 adc)
                     _gcx_adc
+                    ;;
+                vm)
+                    _gcx_vm
+                    ;;
+                run)
+                    _gcx_run
                     ;;
                 setup)
                     _gcx_setup

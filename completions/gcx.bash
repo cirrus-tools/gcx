@@ -4,8 +4,10 @@ _gcx_completions() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="status s project p adc setup version help"
+    local commands="status s project p adc vm run setup version help"
     local adc_commands="login l switch s save help"
+    local vm_commands="list ls ssh start stop help"
+    local run_commands="list ls logs open help"
     local setup_commands="init add-org add-id export import list show edit deps help"
 
     # Get organizations from config
@@ -22,6 +24,14 @@ _gcx_completions() {
             ;;
         adc)
             COMPREPLY=($(compgen -W "${adc_commands}" -- "${cur}"))
+            return
+            ;;
+        vm)
+            COMPREPLY=($(compgen -W "${vm_commands}" -- "${cur}"))
+            return
+            ;;
+        run)
+            COMPREPLY=($(compgen -W "${run_commands}" -- "${cur}"))
             return
             ;;
         setup)
