@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-01-01
+
 ### Improved
 - **Setup Wizard**: Significant UX improvements for `gcx setup`
   - Added interaction cancellation support
@@ -64,7 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-organization, multi-identity support
 - Config export/import for team sharing
 
-[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.3...HEAD
+[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.2.4...HEAD
+[1.2.4]: https://github.com/cirrus-tools/gcx/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/cirrus-tools/gcx/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/cirrus-tools/gcx/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/cirrus-tools/gcx/compare/v1.2.0...v1.2.1
