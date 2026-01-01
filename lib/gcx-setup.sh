@@ -392,7 +392,7 @@ add_org_smart() {
     local color=$(echo -e "green\nmagenta\ncyan\nyellow\nblue\nred" | gum choose --header "Select display color")
     
     # Add to config using yq
-    yq -i ".organizations.$org_name = {
+    yq -i ".organizations.[\"$org_name\"] = {
         \"display_name\": \"$display_name\",
         \"color\": \"$color\",
         \"gcloud_config\": \"$gcloud_config\",
@@ -533,7 +533,7 @@ EOF
         fi
         
         # Add organization structure
-        yq -i ".organizations.$org_id = {
+        yq -i ".organizations.[\"$org_id\"] = {
             \"display_name\": \"$display_name\",
             \"color\": \"$color\",
             \"gcloud_config\": \"$gcloud_config\",
@@ -551,9 +551,12 @@ EOF
             local id_key=$(gum input --placeholder "Identity key (e.g., user, sa, admin)" --value "$([ $id_num -eq 1 ] && echo 'user' || echo '')")
             local id_name=$(gum input --placeholder "Display name (e.g., User, Service Account)")
             local account=$(gum input --placeholder "Account email (e.g., you@company.com)")
-            local adc=$(echo "$creds" | gum choose --header "Select ADC credential file")
+            local adc=""
+            if [ "$creds" != "none" ] && [ -n "$creds" ]; then
+                adc=$(echo "$creds" | gum choose --header "Select ADC credential file (or Ctrl+C to skip)" || echo "")
+            fi
             
-            yq -i ".organizations.$org_id.identities.$id_key = {
+            yq -i ".organizations.[\"$org_id\"].identities.[\"$id_key\"] = {
                 \"name\": \"$id_name\",
                 \"account\": \"$account\",
                 \"adc\": \"$adc\"
@@ -641,21 +644,29 @@ add_org() {
     local gcloud_config=$(echo "$gcloud_configs" | gum choose --header "Select gcloud configuration")
     
     # Get kubeconfig
-    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename || echo "none")
-    local kubeconfig=$(echo "$kubeconfigs" | gum choose --header "Select kubeconfig" || echo "")
+    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename || echo "")
+    local kubeconfig=""
+    if [ -n "$kubeconfigs" ]; then
+        kubeconfig=$(echo -e "$kubeconfigs\n(none)" | gum choose --header "Select kubeconfig")
+        [ "$kubeconfig" = "(none)" ] && kubeconfig=""
+    fi
     
     # Get account
     local account=$(gum input --placeholder "Account email")
     
     # Get ADC
-    local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "none")
-    local adc=$(echo "$adc_files" | gum choose --header "Select ADC credential")
+    local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "")
+    local adc=""
+    if [ -n "$adc_files" ]; then
+        adc=$(echo -e "$adc_files\n(none)" | gum choose --header "Select ADC credential")
+        [ "$adc" = "(none)" ] && adc=""
+    fi
     
     # Select color
     local color=$(echo -e "green\nmagenta\ncyan\nyellow\nblue\nred" | gum choose --header "Select display color")
     
     # Add to config using yq
-    yq -i ".organizations.$org_name = {
+    yq -i ".organizations.[\"$org_name\"] = {
         \"display_name\": \"$display_name\",
         \"color\": \"$color\",
         \"gcloud_config\": \"$gcloud_config\",
@@ -691,10 +702,13 @@ add_identity() {
     local id_name=$(gum input --placeholder "Display name (e.g., User, Service Account)")
     local account=$(gum input --placeholder "Account email")
     
-    local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "none")
-    local adc=$(echo "$adc_files" | gum choose --header "Select ADC credential")
+    local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "")
+    local adc=""
+    if [ -n "$adc_files" ]; then
+        adc=$(echo "$adc_files" | gum choose --header "Select ADC credential (or Ctrl+C to skip)" || echo "")
+    fi
     
-    yq -i ".organizations.$org.identities.$id_key = {
+    yq -i ".organizations.[\"$org\"].identities.[\"$id_key\"] = {
         \"name\": \"$id_name\",
         \"account\": \"$account\",
         \"adc\": \"$adc\"
