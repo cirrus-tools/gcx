@@ -87,6 +87,50 @@ gcx setup import FILE   # Import template
 gcx setup edit          # Edit config file
 ```
 
+## Add Organization Flow
+
+When running `gcx setup` → "Add new organization":
+
+```
+1. gcloud configuration
+   ├── Use existing gcloud configuration
+   │   └── Select from list
+   └── Create new gcloud configuration
+       ├── Enter configuration name
+       └── Select authentication type:
+           ├── 👤 User Account (browser login)
+           │   └── Opens browser for gcloud auth login
+           └── 🔑 Service Account (credentials.json)
+               ├── 📁 Select existing file from ~/.config/gcloud-creds/
+               ├── 📋 Paste JSON content (auto-saves)
+               └── 📝 Enter file path
+
+2. Display name (default: config name)
+
+3. Kubeconfig (stored in ~/.kube/)
+   ├── Select existing config-*
+   ├── ➕ Create new kubeconfig
+   │   └── Select GKE cluster → auto-fetch credentials
+   └── (none)
+
+4. Account & ADC
+   ├── If SA: auto-extracted from credentials.json
+   └── If User: manual input + select ADC file
+
+5. Project
+   ├── If new config: already selected during auth
+   └── If existing: select from list
+
+6. Color (green/magenta/cyan/yellow/blue/red)
+```
+
+### Service Account Authentication
+
+When using Service Account credentials:
+- **Account email**: Auto-extracted from `client_email` in credentials.json
+- **ADC**: Automatically uses the same credentials.json file
+- **Credentials storage**: Saved to `~/.config/gcloud-creds/`
+
 ## Team Sharing
 
 ```bash

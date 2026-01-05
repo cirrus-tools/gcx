@@ -311,18 +311,22 @@ smart_menu() {
 
     local action=$(echo "$OPTIONS" | gum choose --header "What would you like to do?" --header.foreground="4")
     
+    # Handle Ctrl+C / cancel - exit the script completely
+    [ -z "$action" ] && { echo ""; echo "Cancelled."; exit 130; }
+    
     case "$action" in
         *"First-time setup"*)
             init_from_current
             ;;
         *"Add new organization"*)
-            add_org_smart
+            add_org_smart || exit $?
             ;;
         *"Add identity"*)
             add_identity
             ;;
         *"Import from template"*)
             local file=$(gum input --placeholder "Path to template file")
+            [ -z "$file" ] && { echo "Cancelled."; exit 130; }
             import_config "$file"
             ;;
         *"Export template"*)
@@ -355,12 +359,21 @@ add_org_smart() {
     
     local config_choice=$(echo -e "Use existing gcloud configuration\nCreate new gcloud configuration" | gum choose --header "gcloud configuration:")
     
+    # Handle Ctrl+C / cancel
+    [ -z "$config_choice" ] && { echo "Cancelled."; return 1; }
+    
     local gcloud_config=""
+    local sa_key_path=""
     
     if [[ "$config_choice" == *"Create new"* ]]; then
-        gcloud_config=$(create_new_gcloud_config)
+        local result=$(create_new_gcloud_config)
+        [ -z "$result" ] && { echo "Cancelled."; return 1; }
+        # Parse config_name|sa_key_path
+        gcloud_config=$(echo "$result" | tail -n1 | cut -d'|' -f1)
+        sa_key_path=$(echo "$result" | tail -n1 | cut -d'|' -f2)
     else
         gcloud_config=$(echo "$gcloud_configs" | gum choose --header "Select gcloud configuration")
+        [ -z "$gcloud_config" ] && { echo "Cancelled."; return 1; }
     fi
     
     if [ -z "$gcloud_config" ]; then
@@ -368,31 +381,115 @@ add_org_smart() {
         return 1
     fi
     
-    # Now continue with normal add_org flow
-    local org_name=$(gum input --placeholder "Organization ID (lowercase, no spaces)")
-    local display_name=$(gum input --placeholder "Display name" --value "$org_name")
+    # Use gcloud config name as org_id directly (no prompt needed)
+    local org_name="$gcloud_config"
+    
+    # Only ask for display name
+    local display_name=$(gum input --header "Display name:" --value "$org_name")
+    [ -z "$display_name" ] && display_name="$org_name"
     
     # Get kubeconfig
-    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename || echo "none")
-    local kubeconfig=$(echo -e "$kubeconfigs\n(none)" | gum choose --header "Select kubeconfig")
-    [ "$kubeconfig" = "(none)" ] && kubeconfig=""
+    local kubeconfigs=$(ls "$KUBECONFIG_DIR"/config-* 2>/dev/null | xargs -n1 basename 2>/dev/null || echo "")
+    local kubeconfig_choice=""
     
-    # Get account
-    local account=$(gum input --placeholder "Account email")
+    if [ -n "$kubeconfigs" ]; then
+        kubeconfig_choice=$(echo -e "$kubeconfigs\n➕ Create new kubeconfig\n(none)" | gum choose --header "Select kubeconfig (stored in ~/.kube/):")
+    else
+        kubeconfig_choice=$(echo -e "➕ Create new kubeconfig\n(none)" | gum choose --header "Select kubeconfig (stored in ~/.kube/):")
+    fi
     
-    # Get ADC
-    local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "none")
-    local adc=$(echo -e "$adc_files\n(none)" | gum choose --header "Select ADC credential")
-    [ "$adc" = "(none)" ] && adc=""
+    # Handle cancel
+    [ -z "$kubeconfig_choice" ] && { echo "Cancelled."; return 1; }
     
-    # Get project
-    echo -e "${BLUE}Loading projects...${NC}"
-    local projects=$(gcloud projects list --format="value(projectId)" 2>/dev/null)
-    local project=$(echo -e "$projects\n(skip)" | gum choose --header "Select default project")
-    [ "$project" = "(skip)" ] && project=""
+    local kubeconfig=""
+    
+    if [[ "$kubeconfig_choice" == *"Create new"* ]]; then
+        # Create new kubeconfig
+        echo ""
+        echo -e "${BLUE}Create new kubeconfig${NC}"
+        echo -e "${YELLOW}ℹ️  This will fetch GKE credentials and save to ~/.kube/config-{name}${NC}"
+        echo ""
+        
+        local kube_name=$(gum input --header "Kubeconfig name (e.g., myorg-prod):")
+        
+        if [ -n "$kube_name" ]; then
+            # List GKE clusters
+            echo -e "${BLUE}Loading GKE clusters...${NC}"
+            local clusters=$(gcloud container clusters list --format="value(name,zone)" 2>/dev/null)
+            
+            if [ -z "$clusters" ]; then
+                echo -e "${YELLOW}No GKE clusters found in current project.${NC}"
+                echo -e "${YELLOW}You can add kubeconfig later with: gcloud container clusters get-credentials CLUSTER --region REGION${NC}"
+            else
+                local cluster_choice=$(echo "$clusters" | gum choose --header "Select cluster:")
+                
+                if [ -n "$cluster_choice" ]; then
+                    local cluster_name=$(echo "$cluster_choice" | awk '{print $1}')
+                    local cluster_zone=$(echo "$cluster_choice" | awk '{print $2}')
+                    
+                    # Determine if it's a zone or region
+                    local location_flag="--zone"
+                    # If zone has format like "us-central1" (no -a, -b, -c suffix), it's a region
+                    if [[ ! "$cluster_zone" =~ -[a-z]$ ]]; then
+                        location_flag="--region"
+                    fi
+                    
+                    # Create kubeconfig
+                    local kubeconfig_path="$KUBECONFIG_DIR/config-$kube_name"
+                    echo -e "${BLUE}Fetching credentials...${NC}"
+                    KUBECONFIG="$kubeconfig_path" gcloud container clusters get-credentials "$cluster_name" $location_flag "$cluster_zone" 2>/dev/null
+                    
+                    if [ -f "$kubeconfig_path" ]; then
+                        kubeconfig="config-$kube_name"
+                        echo -e "${GREEN}✓${NC} Kubeconfig saved to: $kubeconfig_path"
+                    else
+                        echo -e "${RED}Failed to create kubeconfig${NC}"
+                    fi
+                fi
+            fi
+        fi
+    elif [ "$kubeconfig_choice" != "(none)" ] && [ -n "$kubeconfig_choice" ]; then
+        kubeconfig="$kubeconfig_choice"
+    fi
+    
+    # Get account - auto-extract from SA if available
+    local account=""
+    if [ -n "$sa_key_path" ] && [ -f "$sa_key_path" ]; then
+        account=$(jq -r '.client_email // empty' "$sa_key_path")
+        echo -e "${GREEN}✓${NC} Account from SA: $account"
+    else
+        account=$(gum input --header "Account email:")
+    fi
+    
+    # Get ADC - auto-set from SA if available
+    local adc=""
+    if [ -n "$sa_key_path" ] && [ -f "$sa_key_path" ]; then
+        adc=$(basename "$sa_key_path")
+        echo -e "${GREEN}✓${NC} ADC from SA: $adc"
+    else
+        local adc_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename || echo "none")
+        adc=$(echo -e "$adc_files\n(none)" | gum choose --header "Select ADC credential")
+        [ "$adc" = "(none)" ] && adc=""
+    fi
+    
+    # Get project - only ask if using existing config (create_new_gcloud_config already sets project)
+    local project=""
+    if [[ "$config_choice" == *"existing"* ]]; then
+        echo -e "${BLUE}Loading projects...${NC}"
+        local projects=$(gcloud projects list --format="value(projectId)" 2>/dev/null)
+        project=$(echo -e "$projects\n(skip)" | gum choose --header "Select default project")
+        [ "$project" = "(skip)" ] && project=""
+    else
+        # Get current project from gcloud config
+        project=$(gcloud config get-value project 2>/dev/null)
+    fi
     
     # Select color
     local color=$(echo -e "green\nmagenta\ncyan\nyellow\nblue\nred" | gum choose --header "Select display color")
+    
+    # Determine identity name based on auth type
+    local identity_name="User"
+    [ -n "$sa_key_path" ] && identity_name="Service Account"
     
     # Add to config using yq
     yq -i ".organizations.[\"$org_name\"] = {
@@ -402,7 +499,7 @@ add_org_smart() {
         \"kubeconfig\": \"$kubeconfig\",
         \"identities\": {
             \"default\": {
-                \"name\": \"User\",
+                \"name\": \"$identity_name\",
                 \"account\": \"$account\",
                 \"adc\": \"$adc\",
                 \"project\": \"$project\"
@@ -414,22 +511,138 @@ add_org_smart() {
     echo -e "${GREEN}✓${NC} Added organization: $org_name"
 }
 
+# Get Service Account credentials from user input
+# Returns the path to the SA key file
+# Usage: sa_key_path=$(get_sa_credentials "config_name")
+get_sa_credentials() {
+    local config_name="$1"
+    local sa_key_path=""
+    
+    echo ""
+    local input_method=$(echo -e "📁 Select existing file from ~/.config/gcloud-creds/\n📋 Paste JSON content\n📝 Enter file path" | gum choose --header "How to provide SA credentials:")
+    
+    case "$input_method" in
+        *"Select existing"*)
+            local existing_files=$(ls "$CREDS_DIR"/*.json 2>/dev/null | xargs -n1 basename 2>/dev/null)
+            if [ -z "$existing_files" ] || [ "$existing_files" = "none" ]; then
+                echo -e "${YELLOW}No existing credential files found in $CREDS_DIR${NC}" >&2
+                echo -e "${YELLOW}Please use another option.${NC}" >&2
+                sa_key_path=$(get_sa_credentials "$config_name")
+            else
+                local selected=$(echo "$existing_files" | gum choose --header "Select credential file:")
+                sa_key_path="$CREDS_DIR/$selected"
+            fi
+            ;;
+        *"Paste JSON"*)
+            echo -e "${BLUE}Paste your Service Account JSON below (press Ctrl+D when done):${NC}" >&2
+            local json_content=$(gum write --placeholder "Paste your credentials JSON here..." --char-limit 0)
+            
+            if [ -z "$json_content" ]; then
+                echo -e "${RED}No content provided${NC}" >&2
+                return 1
+            fi
+            
+            # Validate JSON
+            if ! echo "$json_content" | jq . >/dev/null 2>&1; then
+                echo -e "${RED}Invalid JSON format${NC}" >&2
+                return 1
+            fi
+            
+            # Extract SA email for filename
+            local sa_email=$(echo "$json_content" | jq -r '.client_email // empty')
+            local sa_name=""
+            if [ -n "$sa_email" ]; then
+                sa_name=$(echo "$sa_email" | cut -d'@' -f1)
+            else
+                sa_name="sa-$config_name"
+            fi
+            
+            # Save to file
+            mkdir -p "$CREDS_DIR"
+            sa_key_path="$CREDS_DIR/${sa_name}.json"
+            echo "$json_content" > "$sa_key_path"
+            chmod 600 "$sa_key_path"
+            echo -e "${GREEN}✓${NC} Saved credentials to: ${sa_key_path}" >&2
+            ;;
+        *"Enter file path"*)
+            local input_path=$(gum input --placeholder "Enter path to credentials JSON file")
+            
+            # Expand ~ to home directory
+            input_path="${input_path/#\~/$HOME}"
+            
+            if [ ! -f "$input_path" ]; then
+                echo -e "${RED}File not found: $input_path${NC}" >&2
+                return 1
+            fi
+            
+            # Validate JSON
+            if ! jq . "$input_path" >/dev/null 2>&1; then
+                echo -e "${RED}Invalid JSON format in file${NC}" >&2
+                return 1
+            fi
+            
+            # Copy to creds dir for consistency
+            local filename=$(basename "$input_path")
+            mkdir -p "$CREDS_DIR"
+            cp "$input_path" "$CREDS_DIR/$filename"
+            chmod 600 "$CREDS_DIR/$filename"
+            sa_key_path="$CREDS_DIR/$filename"
+            echo -e "${GREEN}✓${NC} Copied credentials to: ${sa_key_path}" >&2
+            ;;
+    esac
+    
+    echo "$sa_key_path"
+}
+
 create_new_gcloud_config() {
-    local config_name=$(gum input --placeholder "New configuration name")
+    local config_name=$(gum input --header "New configuration name:")
     
     if [ -z "$config_name" ]; then
         return 1
     fi
     
-    echo -e "${BLUE}Creating configuration '$config_name'...${NC}"
+    echo -e "${BLUE}Creating configuration '$config_name'...${NC}" >&2
     gcloud config configurations create "$config_name" 2>/dev/null || true
     gcloud config configurations activate "$config_name" 2>/dev/null
     
-    echo -e "${BLUE}Opening browser for login...${NC}"
-    gcloud auth login
+    # Ask for authentication type
+    local auth_type=$(echo -e "👤 User Account (browser login)\n🔑 Service Account (credentials.json)" | gum choose --header "Select authentication type:")
+    
+    # Handle cancel
+    [ -z "$auth_type" ] && { echo "Cancelled." >&2; return 1; }
+    
+    local sa_key_path=""
+    
+    if [[ "$auth_type" == *"Service Account"* ]]; then
+        # Get SA credentials (capture only the last line which is the path)
+        local sa_output=$(get_sa_credentials "$config_name")
+        sa_key_path=$(echo "$sa_output" | tail -n1)
+        
+        if [ -z "$sa_key_path" ] || [ ! -f "$sa_key_path" ]; then
+            echo -e "${RED}Failed to get SA credentials${NC}" >&2
+            return 1
+        fi
+        
+        # Activate service account
+        echo -e "${BLUE}Activating service account...${NC}" >&2
+        if gcloud auth activate-service-account --key-file="$sa_key_path"; then
+            echo -e "${GREEN}✓${NC} Service account activated" >&2
+        else
+            echo -e "${RED}Failed to activate service account${NC}" >&2
+            return 1
+        fi
+    else
+        # Handle cancel for user account
+        if [ -z "$auth_type" ]; then
+            return 1
+        fi
+        # User account login
+        echo -e "${BLUE}Opening browser for login...${NC}" >&2
+        gcloud auth login
+    fi
     
     # Select project
-    echo -e "${BLUE}Loading projects...${NC}"
+    echo -e "${BLUE}Loading projects...${NC}" >&2
     local projects=$(gcloud projects list --format="value(projectId)" 2>/dev/null)
     if [ -n "$projects" ]; then
         local project=$(echo "$projects" | gum choose --header "Select project:")
@@ -438,8 +651,14 @@ create_new_gcloud_config() {
         fi
     fi
     
-    echo -e "${GREEN}✓${NC} Configuration '$config_name' created"
-    echo "$config_name"
+    echo -e "${GREEN}✓${NC} Configuration '$config_name' created" >&2
+    
+    # Return config_name and sa_key_path (separated by |) - this is the ONLY stdout output
+    if [ -n "$sa_key_path" ]; then
+        echo "$config_name|$sa_key_path"
+    else
+        echo "$config_name|"
+    fi
 }
 
 # =============================================================================

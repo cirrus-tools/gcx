@@ -7,9 +7,10 @@
 #
 # Reads configuration from ~/.config/gcx/config.yaml
 
-VERSION="1.2.4"
+VERSION="1.3.0"
 
-# set -e disabled - gcloud commands may return non-zero on warnings
+# Handle Ctrl+C properly
+trap 'echo ""; echo "Cancelled."; exit 130' INT
 
 # Paths
 CONFIG_DIR="$HOME/.config/gcx"
