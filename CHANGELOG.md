@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0] - 2026-01-05
 
+## [1.3.0] - 2026-01-05
+
 ### Added
 - **Service Account Authentication**: Add orgs using SA credentials instead of browser login
   - Select existing credentials file from `~/.config/gcloud-creds/`
