@@ -7,7 +7,7 @@
 #
 # Reads configuration from ~/.config/gcx/config.yaml
 
-VERSION="1.3.0"
+VERSION="1.4.0"
 
 # Handle Ctrl+C properly
 trap 'echo ""; echo "Cancelled."; exit 130' INT

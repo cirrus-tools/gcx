@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-01-21
+
 ### Added
 - **`gcx network`** - Network/VPC/IP management
   - List VPC networks and subnets
@@ -110,7 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-organization, multi-identity support
 - Config export/import for team sharing
 
-[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/cirrus-tools/gcx/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/cirrus-tools/gcx/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/cirrus-tools/gcx/compare/v1.2.4...v1.3.0
 [1.2.4]: https://github.com/cirrus-tools/gcx/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/cirrus-tools/gcx/compare/v1.2.2...v1.2.3
