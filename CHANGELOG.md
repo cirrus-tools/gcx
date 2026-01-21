@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`gcx network`** - Network/VPC/IP management
+  - List VPC networks and subnets
+  - Manage IP addresses (list, reserve, release)
+  - View firewall rules
+  - Create subnets interactively
+- **`gcx sql`** - Cloud SQL instance management
+  - List instances with status indicators
+  - View databases and users
+  - Connect via cloud-sql-proxy
+  - Start/stop/restart instances
+- **`gcx gke`** - GKE cluster management
+  - List clusters with node count and version
+  - Get kubectl credentials
+  - List and resize node pools
+  - Open cluster in Console
+
+### Improved
+- Updated shell completions (bash/zsh) for new commands
+- Updated README roadmap
+
 ## [1.3.0] - 2026-01-05
 
 ## [1.3.0] - 2026-01-05

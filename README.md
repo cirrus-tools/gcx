@@ -154,9 +154,9 @@ gcx setup edit  # Fill in their accounts
 - [x] VM instance selector (`gcx vm`)
 - [x] Cloud Run service selector (`gcx run`)
 - [x] Application Default Credentials (ADC) management (`gcx adc`)
-- [ ] Cloud SQL selector (`gcx sql`)
-- [ ] Network/VPC selector (`gcx network`)
-- [ ] GKE cluster selector (`gcx gke`)
+- [x] Network/VPC/IP selector (`gcx network`)
+- [x] Cloud SQL selector (`gcx sql`)
+- [x] GKE cluster selector (`gcx gke`)
 - [ ] SSH config generation
 - [x] Shell completion (bash/zsh)
 
