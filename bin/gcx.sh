@@ -334,6 +334,9 @@ Commands:
   adc             ADC (Application Default Credentials) management
   vm              VM instance management
   run             Cloud Run service management
+  network, net    Network/VPC/IP management
+  sql             Cloud SQL instance management
+  gke             GKE cluster management
   setup           Run setup wizard
   uninstall       Remove gcx config and restore defaults
   version         Show version
@@ -356,6 +359,25 @@ Cloud Run Commands:
   run list        List all services
   run logs <name> View service logs
   run open <name> Open service URL
+
+Network Commands:
+  network         Interactive network menu
+  network list    List VPC networks
+  network subnets List all subnets
+  network ip      Manage IP addresses
+  network firewall List firewall rules
+
+Cloud SQL Commands:
+  sql             Interactive instance selector
+  sql list        List all instances
+  sql databases   List databases in instance
+  sql connect     Connect to instance
+
+GKE Commands:
+  gke             Interactive cluster selector
+  gke list        List all clusters
+  gke credentials Get kubectl credentials
+  gke nodepools   List node pools
 
 Setup Commands:
   setup init      Initialize configuration
@@ -527,6 +549,51 @@ main() {
             fi
             shift
             run_main "$@"
+            ;;
+        network|net)
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-network.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-network.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-network.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-network.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-network.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-network.sh"
+            else
+                echo "Error: gcx-network.sh not found"
+                exit 1
+            fi
+            shift
+            network_main "$@"
+            ;;
+        sql)
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-sql.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-sql.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-sql.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-sql.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-sql.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-sql.sh"
+            else
+                echo "Error: gcx-sql.sh not found"
+                exit 1
+            fi
+            shift
+            sql_main "$@"
+            ;;
+        gke)
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            if [ -f "$SCRIPT_DIR/../lib/gcx-gke.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx-gke.sh"
+            elif [ -f "$SCRIPT_DIR/../lib/gcx/gcx-gke.sh" ]; then
+                source "$SCRIPT_DIR/../lib/gcx/gcx-gke.sh"
+            elif [ -f "/usr/local/lib/gcx/gcx-gke.sh" ]; then
+                source "/usr/local/lib/gcx/gcx-gke.sh"
+            else
+                echo "Error: gcx-gke.sh not found"
+                exit 1
+            fi
+            shift
+            gke_main "$@"
             ;;
         uninstall)
             do_uninstall

@@ -55,6 +55,51 @@ _gcx_run() {
     _describe -t commands 'run command' run_commands
 }
 
+_gcx_network() {
+    local -a network_commands
+    network_commands=(
+        'list:List VPC networks'
+        'ls:List VPC networks'
+        'subnets:List subnets'
+        'ip:Manage IP addresses'
+        'firewall:List firewall rules'
+        'fw:List firewall rules'
+        'help:Show help'
+    )
+    _describe -t commands 'network command' network_commands
+}
+
+_gcx_sql() {
+    local -a sql_commands
+    sql_commands=(
+        'list:List all instances'
+        'ls:List all instances'
+        'databases:List databases'
+        'db:List databases'
+        'users:List users'
+        'connect:Connect to instance'
+        'start:Start instance'
+        'stop:Stop instance'
+        'restart:Restart instance'
+        'help:Show help'
+    )
+    _describe -t commands 'sql command' sql_commands
+}
+
+_gcx_gke() {
+    local -a gke_commands
+    gke_commands=(
+        'list:List all clusters'
+        'ls:List all clusters'
+        'credentials:Get kubectl credentials'
+        'creds:Get kubectl credentials'
+        'nodepools:List node pools'
+        'np:List node pools'
+        'help:Show help'
+    )
+    _describe -t commands 'gke command' gke_commands
+}
+
 _gcx_setup() {
     local -a setup_commands
     setup_commands=(
@@ -92,6 +137,10 @@ _gcx() {
                 'adc:ADC management'
                 'vm:VM instance management'
                 'run:Cloud Run management'
+                'network:Network/VPC/IP management'
+                'net:Network/VPC/IP management'
+                'sql:Cloud SQL management'
+                'gke:GKE cluster management'
                 'setup:Run setup wizard'
                 'version:Show version'
                 'help:Show help'
@@ -116,6 +165,15 @@ _gcx() {
                     ;;
                 run)
                     _gcx_run
+                    ;;
+                network|net)
+                    _gcx_network
+                    ;;
+                sql)
+                    _gcx_sql
+                    ;;
+                gke)
+                    _gcx_gke
                     ;;
                 setup)
                     _gcx_setup

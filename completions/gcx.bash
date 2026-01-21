@@ -4,10 +4,13 @@ _gcx_completions() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="status s project p adc vm run setup version help"
+    local commands="status s project p adc vm run network net sql gke setup version help"
     local adc_commands="login l switch s save help"
     local vm_commands="list ls ssh start stop help"
     local run_commands="list ls logs open help"
+    local network_commands="list ls subnets ip firewall fw help"
+    local sql_commands="list ls databases db users connect start stop restart help"
+    local gke_commands="list ls credentials creds nodepools np help"
     local setup_commands="init add-org add-id export import list show edit deps help"
 
     # Get organizations from config
@@ -32,6 +35,18 @@ _gcx_completions() {
             ;;
         run)
             COMPREPLY=($(compgen -W "${run_commands}" -- "${cur}"))
+            return
+            ;;
+        network|net)
+            COMPREPLY=($(compgen -W "${network_commands}" -- "${cur}"))
+            return
+            ;;
+        sql)
+            COMPREPLY=($(compgen -W "${sql_commands}" -- "${cur}"))
+            return
+            ;;
+        gke)
+            COMPREPLY=($(compgen -W "${gke_commands}" -- "${cur}"))
             return
             ;;
         setup)
